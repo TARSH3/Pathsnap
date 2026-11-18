@@ -40,6 +40,8 @@ def load_trip_raw(trip_id: str) -> Dict[str, Any]:
         raise FileNotFoundError(f"Trip directory not found: {trip_path}")
 
     # 1. Parse .track
+    # Raw file format: col 0 = Longitude (X), col 1 = Latitude (Y), col 2 = Timestamp
+    # Folium/Leaflet expects [latitude, longitude], so we store [lat, lon]
     track_file = os.path.join(trip_path, f"{trip_id}.track")
     gps_coords: List[List[float]] = []
     timestamps: List[float] = []
@@ -48,11 +50,15 @@ def load_trip_raw(trip_id: str) -> Dict[str, Any]:
             for line in f:
                 parts = line.strip().split()
                 if len(parts) >= 2:
-                    gps_coords.append([float(parts[0]), float(parts[1])])
+                    lon = float(parts[0])
+                    lat = float(parts[1])
+                    gps_coords.append([lat, lon])
                     if len(parts) >= 3:
                         timestamps.append(float(parts[2]))
 
     # 2. Parse .nodes (0-based row index is node_id)
+    # Raw file format: col 0 = Longitude (X), col 1 = Latitude (Y)
+    # Stored as [lat, lon] for Leaflet/Folium polyline rendering
     nodes_file = os.path.join(trip_path, f"{trip_id}.nodes")
     nodes: List[List[float]] = []
     if os.path.exists(nodes_file):
@@ -60,7 +66,9 @@ def load_trip_raw(trip_id: str) -> Dict[str, Any]:
             for line in f:
                 parts = line.strip().split()
                 if len(parts) >= 2:
-                    nodes.append([float(parts[0]), float(parts[1])])
+                    lon = float(parts[0])
+                    lat = float(parts[1])
+                    nodes.append([lat, lon])
 
     # 3. Parse .arcs (0-based row index is arc_id)
     arcs_file = os.path.join(trip_path, f"{trip_id}.arcs")

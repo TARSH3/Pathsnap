@@ -41,14 +41,19 @@ def decode_trip(
         gps_coords = np.asarray(gps_coords, dtype=float)
         arcs = np.asarray(arcs, dtype=int)
 
-        nx, ny = transformer.transform(nodes[:, 0], nodes[:, 1])
+        # Coordinate ordering check: EPSG:4326 with always_xy=True expects (lon, lat)
+        # Latitude is bounded in [-90, 90]. If col 0 has values > 90 or < -90, col 0 is lon.
+        if len(nodes) > 0 and (np.any(np.abs(nodes[:, 0]) > 90) or np.any(np.abs(gps_coords[:, 0]) > 90)):
+            node_lon, node_lat = nodes[:, 0], nodes[:, 1]
+            gps_lon, gps_lat = gps_coords[:, 0], gps_coords[:, 1]
+        else:
+            node_lat, node_lon = nodes[:, 0], nodes[:, 1]
+            gps_lat, gps_lon = gps_coords[:, 0], gps_coords[:, 1]
+
+        nx, ny = transformer.transform(node_lon, node_lat)
         nodes_projected = np.column_stack((nx, ny))
 
-        gx, gy = transformer.transform(
-            gps_coords[:, 0],
-            gps_coords[:, 1]
-        )
-
+        gx, gy = transformer.transform(gps_lon, gps_lat)
         gps_projected = np.column_stack((gx, gy))
 
         # --------------------------------------------------
