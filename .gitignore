@@ -50,3 +50,5 @@ Thumbs.db
 data/train/
 *.zip
 *.tar.gz
+data/processed/features.parquet
+data/processed/first_map.html
