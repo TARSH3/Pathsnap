@@ -23,7 +23,7 @@ def decode_trip(
     """
 
     try:
-        from pathsnap_v2 import decode2
+        from hmm_decoder.pathsnap_v2 import decode2
         from shapely.geometry import LineString, Point
         from shapely.strtree import STRtree
         from pyproj import Transformer
