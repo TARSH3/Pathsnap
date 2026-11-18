@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
+import streamlit.components.v1 as components
 from src.ui.map_utils import generate_folium_map
-from streamlit_folium import st_folium
 
 st.set_page_config(
     page_title="PathSnap Evaluator Dashboard",
@@ -40,7 +40,7 @@ with st.sidebar:
     api_url = st.text_input(
         "Backend Base URL",
         value="http://localhost:8000",
-        help="Enter Laptop 1's IP (e.g., http://192.168.1.50:8000)"
+        help="Enter Laptop 1's IP (e.g., http://10.1.33.53:8000)"
     )
 
     # Health Check Button
@@ -48,7 +48,7 @@ with st.sidebar:
         try:
             r = requests.get(f"{api_url}/health", timeout=3)
             if r.status_code == 200:
-                st.success(" Connected to Laptop 1 Backend!")
+                st.success("✅ Connected to Laptop 1 Backend!")
             else:
                 st.warning(f"Server responded with code {r.status_code}")
         except Exception as e:
@@ -116,31 +116,33 @@ if evaluate_btn:
 
                 st.markdown("### 🗺️ Geographical Trajectory Map")
                 st.caption(
-                    "Blue markers: Raw noisy GPS points | Green line: Reconstructed route | "
+                    "🔵 **Blue markers:** Raw noisy GPS observations | "
+                    "🟢 **Green polyline:** Reconstructed road route | "
                     "Use layer toggle in top right corner"
                 )
 
-                # Render Folium Map
+                # Render Folium Map reliably using components HTML (instant, never goes blank)
                 folium_map = generate_folium_map(
                     gps_coords=data["gps_coordinates"],
                     predicted_path_coords=data["predicted_path_coords"],
                     trip_id=selected_trip
                 )
-                st_folium(folium_map, width="100%", height=550)
+                map_html = folium_map._repr_html_()
+                components.html(map_html, height=550)
 
                 # Route Details
                 with st.expander(f"📋 View Predicted Road Arc Sequence ({data['predicted_arc_count']} arcs)"):
                     st.json({
                         "trip_id": selected_trip,
                         "total_arcs": data["predicted_arc_count"],
-                        "predicted_arcs": data["predicted_arcs"]
+                        "predicted_arcs": data["predicted_arcs"][:100]
                     })
 
             else:
                 st.error(f"Laptop 1 API Error ({res.status_code}): {res.text}")
 
         except requests.exceptions.ConnectionError:
-            st.error(f"Could not connect to {api_url}. Is Laptop 1 running `uvicorn` on 0.0.0.0:8000?")
+            st.error(f"Could not connect to {api_url}. Is Laptop 1 running `python3 server.py`?")
         except Exception as e:
             st.error(f"Unexpected error: {str(e)}")
 
