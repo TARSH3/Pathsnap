@@ -8,15 +8,16 @@ def generate_folium_map(
 ) -> folium.Map:
     """
     Creates an interactive Folium map adhering to Section 6 of PathSnap guidelines:
-    1. Distinguishable colors: Blue dots for GPS, Green polyline for Reconstructed route.
-    2. Start/End green & red pin markers.
-    3. Clear layer control.
-    4. Auto-adjusted zoom level and bounds.
+    1. OpenStreetMap tiles (standard, free, no API key required).
+    2. Distinguishable colors: Blue dots for GPS, Green polyline for Reconstructed route.
+    3. Start/End green & red pin markers.
+    4. Subsampled GPS dots if > 500 points to keep map fast and responsive.
+    5. Clear layer control and auto-adjusted zoom bounds.
     """
     if not gps_coords and not predicted_path_coords:
-        return folium.Map(location=[0.0, 0.0], zoom_start=2)
+        return folium.Map(location=[54.73, 55.97], zoom_start=13, tiles="OpenStreetMap")
 
-    # Calculate center point
+    # Center location
     ref_coords = gps_coords if gps_coords else predicted_path_coords
     avg_lat = sum(p[0] for p in ref_coords) / len(ref_coords)
     avg_lon = sum(p[1] for p in ref_coords) / len(ref_coords)
@@ -24,12 +25,15 @@ def generate_folium_map(
     m = folium.Map(
         location=[avg_lat, avg_lon],
         zoom_start=14,
-        tiles="CartoDB positron"
+        tiles="OpenStreetMap"
     )
 
-    # 1. Raw GPS Observations Layer
+    # 1. Raw GPS Observations Layer (subsample if large to prevent browser DOM lag)
     gps_layer = folium.FeatureGroup(name="Raw GPS Observations (Noisy)", show=True)
-    for idx, pt in enumerate(gps_coords):
+    step = max(1, len(gps_coords) // 300)  # Up to 300 crisp points for fast rendering
+    subsampled_gps = gps_coords[::step]
+    
+    for idx, pt in enumerate(subsampled_gps):
         folium.CircleMarker(
             location=pt,
             radius=3.5,
@@ -37,7 +41,7 @@ def generate_folium_map(
             fill=True,
             fill_color="#1F77B4",
             fill_opacity=0.75,
-            tooltip=f"GPS Obs #{idx+1}: ({pt[0]:.5f}, {pt[1]:.5f})"
+            tooltip=f"GPS Obs ({pt[0]:.5f}, {pt[1]:.5f})"
         ).add_to(gps_layer)
     gps_layer.add_to(m)
 
@@ -46,25 +50,25 @@ def generate_folium_map(
         route_layer = folium.FeatureGroup(name="Reconstructed Route (PathSnap)", show=True)
         folium.PolyLine(
             locations=predicted_path_coords,
-            weight=4.5,
+            weight=5,
             color="#2CA02C",
             opacity=0.9,
             tooltip=f"Predicted Route for Trip {trip_id}"
         ).add_to(route_layer)
         route_layer.add_to(m)
 
-        # Start Marker (Green Flag)
+        # Start Marker (Green Pin)
         folium.Marker(
             location=predicted_path_coords[0],
             popup=f"Trip {trip_id} Start",
-            icon=folium.Icon(color="green", icon="play", prefix="fa")
+            icon=folium.Icon(color="green", icon="play")
         ).add_to(m)
 
-        # End Marker (Red Flag)
+        # End Marker (Red Pin)
         folium.Marker(
             location=predicted_path_coords[-1],
             popup=f"Trip {trip_id} Destination",
-            icon=folium.Icon(color="red", icon="stop", prefix="fa")
+            icon=folium.Icon(color="red", icon="stop")
         ).add_to(m)
 
     # Add Layer Control
